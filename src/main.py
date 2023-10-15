@@ -13,8 +13,8 @@ from nba_api.stats.endpoints import playbyplayv2,\
 team_id = 1610612744
 season_id = '2022-23'
 # game_id = '0022200866'
-timeout = 30
-retry_attempts = 7
+timeout = 20
+retry_attempts = 10
 
 def calculate_time_at_period(current_period):
     if current_period > 5:
@@ -62,25 +62,24 @@ if __name__ == '__main__':
                                'GAME_ID': game_id},
                     axis=1).tolist()
 
+                pbp = playbyplayv2.PlayByPlayV2(
+                    timeout=timeout,
+                    game_id=game_id).get_data_frames()[0]
+                game_subs = pbp.loc[(pbp.EVENTMSGTYPE == 8) & (pbp.PLAYER1_TEAM_ID == team_id)]
+
+                bc = boxscoreadvancedv2.BoxScoreAdvancedV2(
+                    timeout=timeout,
+                    game_id=game_id,
+                ).get_data_frames()[0]
+                players = bc[bc.TEAM_ID == team_id][['PLAYER_NAME', 'PLAYER_ID']]
+                players.set_index('PLAYER_ID', inplace=True)
+
                 for period in [1, 2, 3, 4]:
 
-                    pbp = playbyplayv2.PlayByPlayV2(
-                        timeout=timeout,
-                        game_id=game_id,
-                        start_period=period,
-                        end_period=period).get_data_frames()[0]
-                    subs = pbp.loc[(pbp.EVENTMSGTYPE == 8) & (pbp.PLAYER1_TEAM_ID == team_id)]
-
-                    bc = boxscoreadvancedv2.BoxScoreAdvancedV2(
-                        timeout=timeout,
-                        game_id=game_id, end_range=(calculate_time_at_period(period + 1) - 5),
-                        start_range=(calculate_time_at_period(period) + 5), range_type=2,
-                    ).get_data_frames()[0]
-                    players = bc[bc.TEAM_ID == team_id][['PLAYER_NAME', 'PLAYER_ID']]
-                    players.set_index('PLAYER_ID', inplace=True)
+                    subs_this_period = game_subs.loc[(pbp.PERIOD == period)]
 
                     def init_quarter(row):
-                        total_subs = subs.loc[(subs.PLAYER1_ID == row.name) | (subs.PLAYER2_ID == row.name)]
+                        total_subs = subs_this_period.loc[(subs_this_period.PLAYER1_ID == row.name) | (subs_this_period.PLAYER2_ID == row.name)]
                         if len(total_subs) == 0:
                             return []
 
@@ -99,7 +98,7 @@ if __name__ == '__main__':
                         next(j for j in player_subs_i if j['PLAYER_ID'] == sub.PLAYER2_ID)\
                             ['SUBS'].append(calculate_seconds_elapsed_in_period(period, sub.PCTIMESTRING))
 
-                    subs.apply(sub_iter, axis=1)
+                    subs_this_period.apply(sub_iter, axis=1)
 
                     def end_of_quarter(obj):
                         subs_i = obj['SUBS']
@@ -111,17 +110,20 @@ if __name__ == '__main__':
                     player_subs_i = list(map(end_of_quarter, player_subs_i))
 
                     for p in player_subs_i:
-                        next((i for i in roster_subs_per_game if i['PLAYER_ID'] == p['PLAYER_ID']), None)\
-                            ['SUBS'] += p['SUBS']
+                        player_i = next((i for i in roster_subs_per_game if i['PLAYER_ID'] == p['PLAYER_ID']), None)
+                        if player_i != None:
+                            player_i['SUBS'] += p['SUBS']
                     retries = retry_attempts
-                    break
-            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+                break
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as error:
                 print('Request Error\n')
                 time.sleep(1)
                 retries -= 1
+                if retries == 0:
+                    print('Retries used up!')
                 continue
 
         roster_subs += roster_subs_per_game
     game_df = pd.DataFrame(roster_subs)
-    game_df.to_json('../data/test.json')
+    game_df.to_json('../data/test.csv')
     # break the while loop
