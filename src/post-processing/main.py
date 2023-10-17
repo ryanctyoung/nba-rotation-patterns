@@ -15,14 +15,14 @@ if __name__ == '__main__':
     subs = data.loc[:, 'SUBS'].map(string_to_int_list)
     # time_axis = np.zeros(seconds_per_game)
 
-    i = 0
-    active_time = []
-    while i < len(subs) - 1:
-        for j in range(subs[i], subs[i + 1]):
-            active_time.append(j)
-        i += 2
+    def iter_through_performances(performance):
+        i = 0
+        active_time = []
+        while i < len(performance) - 1:
+            for j in range(performance[i], performance[i + 1]):
+                active_time.append(j)
+            i += 2
+        return active_time
 
-    data = {
-            'SUBS': [active_time]
-            }
-    display_df = pd.DataFrame(data)
+    subs = subs.map(iter_through_performances)
+    data['SUBS'] = subs
