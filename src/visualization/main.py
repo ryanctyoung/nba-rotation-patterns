@@ -46,6 +46,8 @@ if __name__ == '__main__':
             go.Scatter(
                 x=list(range(0, time_axis.size)),
                 y=averaged_log,
+                name=player_name,
+                text="Over " + str(no_of_games) + " games"
             ),
             row=i+1, col=1,
         )
