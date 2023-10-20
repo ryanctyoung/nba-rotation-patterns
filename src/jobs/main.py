@@ -125,5 +125,5 @@ if __name__ == '__main__':
 
         roster_subs += roster_subs_per_game
     game_df = pd.DataFrame(roster_subs)
-    game_df.to_csv('../data/test.csv')
+    game_df.to_csv('../../data/test.csv')
     # break the while loop
