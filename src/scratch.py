@@ -38,7 +38,7 @@ def calculate_seconds_elapsed_in_period(current_period, string):
 if __name__ == '__main__':
     game_rosters = gamerotation.GameRotation(
         timeout=timeout,
-        game_id=game_id,
+        game_id='0012300053',
         league_id=0,
     ).get_data_frames()
     print(game_rosters)
