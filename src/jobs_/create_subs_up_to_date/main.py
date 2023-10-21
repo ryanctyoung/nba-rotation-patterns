@@ -5,6 +5,7 @@ import requests
 
 from nba_api.stats.endpoints import playbyplayv2,\
     gamerotation, leaguegamelog, boxscoreadvancedv2
+from database.connect import insert_into_db
 
 timeout = 10
 retry_attempts = 7
@@ -89,13 +90,16 @@ def create_subs_up_to_date(
         list(map(lambda a: process_game(a, roster_subs), game_series))
 
         game_df = pd.DataFrame(roster_subs)
-        game_df.to_csv('../../../data/schedule_test.json')
+        insert_into_db(game_df)
         return True
-    except Exception as error:
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as error:
+        print(error)
         return False
 
 
 if __name__ == '__main__':
     result = False
     while not result:
-        result = create_subs_up_to_date(date='10/16/2023', season_id='2023-24', season_type='Pre Season')
+        result = create_subs_up_to_date(date='10/19/2023', season_id='2023-24', season_type='Pre Season')
+        if not result:
+            time.sleep(10)

@@ -15,8 +15,10 @@ def scheduled_job():
     try:
         while not result:
             result = create(date=last_modified, season_id=season_id, season_type=season_type[0])
-            time.sleep(5)
+            if not result:
+                time.sleep(5)
     except Exception as error:
+        print(error)
         return
     store_date()
 
