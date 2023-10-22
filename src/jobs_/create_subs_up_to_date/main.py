@@ -92,10 +92,10 @@ def create_subs_up_to_date(
         subs_df = pd.DataFrame(roster_subs)
 
         # game data insert into database
-        insert_into_db(game_log)
+        insert_into_db(df=game_log, table_name='games')
 
         # subs data insert into database
-        insert_into_db(subs_df)
+        insert_into_db(df=subs_df, table_name='rotations')
         return True
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as error:
         print(error)
