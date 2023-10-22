@@ -74,6 +74,7 @@ def create_subs_up_to_date(
                                        'PLAYER_NAME': (a.PLAYER_FIRST + " " + a.PLAYER_LAST),
                                        'GAME_ID': game_id},
                             axis=1).tolist()
+                        sub_list += roster_subs_per_game
                         retries = retry_attempts
                 except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as error:
                     print('Request Error')
@@ -84,7 +85,7 @@ def create_subs_up_to_date(
                         print('Retries used up!')
                         raise Exception('Too many API timeouts')
                     continue
-                sub_list += roster_subs_per_game
+
                 break
 
         list(map(lambda a: process_game(a, roster_subs), game_series))
@@ -102,9 +103,9 @@ def create_subs_up_to_date(
         return False
 
 
-# if __name__ == '__main__':
-#     result = False
-#     while not result:
-#         result = create_subs_up_to_date(date='10/19/2023', season_id='2023-24', season_type='Pre Season')
-#         if not result:
-#             time.sleep(10)
+if __name__ == '__main__':
+    result = False
+    while not result:
+        result = create_subs_up_to_date(date='10/20/2023', season_id='2023-24', season_type='Pre Season')
+        if not result:
+            time.sleep(10)
