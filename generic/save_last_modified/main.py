@@ -10,7 +10,7 @@ def store_date():
     db = {'last_modified': today}
 
     # Its important to use binary mode
-    dbfile = open('../../pickle/date_last_completed', 'wb')
+    dbfile = open('pickle/date_last_completed', 'wb')
 
     # source, destination
     pickle.dump(db, dbfile)
