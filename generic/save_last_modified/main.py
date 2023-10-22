@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 def store_date():
     # initializing data to be stored in db
-    today = date.today() - timedelta(days=3)
+    today = date.today()
 
     # database
     db = {'last_modified': today}

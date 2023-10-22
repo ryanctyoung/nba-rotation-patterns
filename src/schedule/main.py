@@ -8,10 +8,12 @@ sched = BlockingScheduler()
 season_id = '2023-24'
 season_type = ['Pre Season', 'Regular Season', 'Playoffs']
 
-@sched.scheduled_job('cron', day_of_week='mon-sun', hour=5)
+# @sched.scheduled_job('cron', day_of_week='mon-sun', hour=5)
 def scheduled_job():
+    print('Beginning daily scheduled job.')
     result = False
     last_modified = load_date()
+    print('Last ran on {}'.format(last_modified))
     try:
         while not result:
             result = create(date=last_modified, season_id=season_id, season_type=season_type[0])
@@ -22,4 +24,8 @@ def scheduled_job():
         return
     store_date()
 
+
 sched.start()
+
+if __name__ == '__main':
+    scheduled_job()

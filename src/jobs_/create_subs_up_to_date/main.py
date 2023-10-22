@@ -1,11 +1,11 @@
 from datetime import datetime
 import pandas as pd
 import time
+
 import requests
 
-from nba_api.stats.endpoints import playbyplayv2,\
-    gamerotation, leaguegamelog, boxscoreadvancedv2
-from database.connect import insert_into_db
+from nba_api.stats.endpoints import gamerotation, leaguegamelog
+from database.connect import insert_into_db, get_sql_session
 
 timeout = 10
 retry_attempts = 7
@@ -92,13 +92,15 @@ def create_subs_up_to_date(
 
         subs_df = pd.DataFrame(roster_subs)
 
-        # game data insert into database
-        insert_into_db(df=game_log, table_name='games')
+        session = get_sql_session()
+        with session.begin() as conn:
+            # game data insert into database
+            insert_into_db(df=game_log, table_name='games', conn=conn)
 
-        # subs data insert into database
-        insert_into_db(df=subs_df, table_name='rotations')
+            # subs data insert into database
+            insert_into_db(df=subs_df, table_name='rotations', conn=conn)
         return True
-    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as error:
+    except Exception as error:
         print(error)
         return False
 

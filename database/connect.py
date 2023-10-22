@@ -12,8 +12,10 @@ MY_DB_PASS = os.getenv('db-pw')
 MY_DB_SERVER = os.getenv('db-server')
 
 
-def insert_into_db(df, table_name):
-    engine = create_engine('postgresql+psycopg2://{}:{}@{}:5432/{}'.format(MY_DB_USER, MY_DB_PASS, MY_DB_SERVER, MY_DB_DB))
+def get_sql_session():
+    return create_engine('postgresql+psycopg2://{}:{}@{}:5432/{}'.format(MY_DB_USER, MY_DB_PASS, MY_DB_SERVER, MY_DB_DB))
 
-    number = df.to_sql(name=table_name, con=engine, if_exists="append", index=False)
+
+def insert_into_db(df, table_name, conn):
+    number = df.to_sql(name=table_name, con=conn, if_exists="append", index=False)
     return number
