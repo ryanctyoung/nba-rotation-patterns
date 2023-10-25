@@ -1,11 +1,13 @@
 from datetime import datetime
 import pandas as pd
+import numpy as np
 import time
-
+import re
 import requests
 
-from nba_api.stats.endpoints import gamerotation, leaguegamelog
+from nba_api.stats.endpoints import gamerotation, leaguegamelog, playbyplayv3
 from database.connect import insert_into_db, get_sql_session
+from generic.print_to_log.main import print_to_log
 
 timeout = 10
 retry_attempts = 7
@@ -31,6 +33,7 @@ def create_subs_up_to_date(
         ):
     try:
 
+        game_score_histories = {}
         roster_subs = []
 
         game_log = leaguegamelog.LeagueGameLog(
@@ -43,12 +46,39 @@ def create_subs_up_to_date(
         time.sleep(2)
         game_series = game_log.loc[:, "GAME_ID"].unique()
 
-
-        def process_game(game_id, sub_list):
+        def process_game(game_id, sub_list, score_dict):
             retries = retry_attempts
-            print(game_id)
+            print_to_log(game_id)
             while retries > 0:
                 try:
+
+                    # game substitution history with score, for Plus Minus
+                    pbp = playbyplayv3.PlayByPlayV3(start_period=1, end_period=4, game_id=game_id).get_data_frames()[0]
+                    score_history = pbp.loc[
+                        (pbp.pointsTotal != 0) | (pbp.actionType == 'Substitution'), [ 'gameId','clock', 'period', 'teamId',
+                                                                                      'personId', 'playerName',
+                                                                                      'scoreHome', 'scoreAway',
+                                                                                      'actionType', 'location']]
+                    score_history.scoreHome = pd.to_numeric(score_history.scoreHome).ffill().astype(np.int64)
+                    score_history.scoreAway = pd.to_numeric(score_history.scoreAway).ffill().astype(np.int64)
+                    sub_score_history = score_history.loc[pbp.actionType == 'Substitution']
+
+                    def time_conversion(a):
+                        p = a.period
+                        time_dict = re.findall(r'\d+', a.clock)
+                        game_time = 60 * (12 - int(time_dict[0])) + (60 - int(time_dict[1])) + ((p - 1) * 720)
+                        return game_time
+
+                    game_time = sub_score_history.apply(
+                        time_conversion, axis=1)
+                    sub_score_history['gameTime'] = game_time
+                    game_score_sub_history = sub_score_history.drop(['clock', 'period', 'actionType', ], axis=1).to_dict()
+
+                    for x in list(game_score_sub_history.keys()):
+                        if x not in score_dict:
+                            score_dict[x] = []
+                        score_dict[x].extend(list(game_score_sub_history[x].values()))
+
                     game_rosters = gamerotation.GameRotation(
                         timeout=timeout,
                         game_id=game_id,
@@ -77,20 +107,22 @@ def create_subs_up_to_date(
                         sub_list += roster_subs_per_game
                         retries = retry_attempts
                 except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as error:
-                    print('Request Error')
-                    # print(error)
+                    print_to_log('Request Error')
+                    # print_to_log(error)
                     time.sleep(1)
                     retries -= 1
                     if retries == 0:
-                        print('Retries used up!')
+                        print_to_log('Retries used up!')
                         raise Exception('Too many API timeouts')
                     continue
 
                 break
 
-        list(map(lambda a: process_game(a, roster_subs), game_series))
+        list(map(lambda a: process_game(a, roster_subs, game_score_histories), game_series))
 
-        subs_df = pd.DataFrame(roster_subs)
+        subs_df = pd.DataFrame(roster_subs)\
+
+        score_df = pd.DataFrame(game_score_histories)
 
         session = get_sql_session()
         with session.begin() as conn:
@@ -99,15 +131,18 @@ def create_subs_up_to_date(
 
             # subs data insert into database
             insert_into_db(df=subs_df, table_name='rotations', conn=conn)
+
+            # score data insert into database
+            insert_into_db(df=score_df, table_name='score_histories', conn=conn)
         return True
-    except Exception as error:
-        print(error)
+    except (TimeoutError, ConnectionError) as error:
+        print_to_log(error)
         return False
 
 
 if __name__ == '__main__':
     result = False
     while not result:
-        result = create_subs_up_to_date(date='10/20/2023', season_id='2023-24', season_type='Pre Season')
+        result = create_subs_up_to_date(date='10/23/2023', season_id='2023-24', season_type='Regular Season')
         if not result:
             time.sleep(10)
