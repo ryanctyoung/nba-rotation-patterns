@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+from database.select_rotations import select_rotations
+from database.connect import get_sql_session
 
 seconds_per_game = 60 * 12 * 4
 seconds_per_period = int(seconds_per_game / 4)
@@ -16,7 +18,10 @@ def string_to_int_list(string):
 
 
 if __name__ == '__main__':
-    data = pd.read_csv('../../data/test.csv')
+    # data = pd.read_csv('../../data/test.csv')
+    session = get_sql_session()
+    with session.connect() as conn:
+        data = select_rotations(conn)
     players = data['PLAYER_NAME'].unique()
     time_axis = np.zeros(seconds_per_game, dtype=int)
     player_dict = dict(zip(players, np.zeros((players.size, seconds_per_game), dtype=int)))
