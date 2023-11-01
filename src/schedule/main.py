@@ -15,11 +15,12 @@ def scheduled_job():
     print_to_log('Last ran on {}'.format(last_modified))
 
     if last_modified == date.today():
+        print_to_log('No new games to input. Ending job.'.format(last_modified))
         return
 
     try:
         while not result:
-            result = create(date=last_modified, season_id=season_id, season_type=season_type[0])
+            result = create(date=last_modified, season_id=season_id, season_type=season_type[1])
             if not result:
                 time.sleep(5)
     except Exception as error:

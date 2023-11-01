@@ -6,7 +6,7 @@ import re
 import requests
 
 from nba_api.stats.endpoints import gamerotation, leaguegamelog, playbyplayv3
-from database.connect import insert_into_db, get_sql_session
+from database.connect import insert_into_db, get_sql_session, df_upsert
 from generic.print_to_log.main import print_to_log
 
 timeout = 10
@@ -71,7 +71,7 @@ def create_subs_up_to_date(
 
                     game_time = sub_score_history.apply(
                         time_conversion, axis=1)
-                    sub_score_history['gameTime'] = game_time
+                    sub_score_history.loc[:, 'gameTime'] = game_time
                     game_score_sub_history = sub_score_history.drop(['clock', 'period', 'actionType', ], axis=1).to_dict()
 
                     for x in list(game_score_sub_history.keys()):
@@ -118,7 +118,7 @@ def create_subs_up_to_date(
 
                 break
 
-        list(map(lambda a: process_game(a, roster_subs, game_score_histories), game_series))
+        list(map(lambda a: process_game(a, roster_subs, game_score_histories), game_series[0:2]))
 
         subs_df = pd.DataFrame(roster_subs)\
 
@@ -127,13 +127,15 @@ def create_subs_up_to_date(
         session = get_sql_session()
         with session.begin() as conn:
             # game data insert into database
-            insert_into_db(df=game_log, table_name='games', conn=conn)
+            # insert_into_db(df=game_log, table_name='games', conn=conn)
+            df_upsert(df=game_log, table_name='games', conn=conn)
 
             # subs data insert into database
-            insert_into_db(df=subs_df, table_name='rotations', conn=conn)
+            # insert_into_db(df=subs_df, table_name='rotations', conn=conn)
+            df_upsert(df=subs_df, table_name='rotations', conn=conn)
 
             # score data insert into database
-            insert_into_db(df=score_df, table_name='score_histories', conn=conn)
+            df_upsert(df=score_df, table_name='score_histories', conn=conn)
         return True
     except (TimeoutError, ConnectionError) as error:
         print_to_log(error)
