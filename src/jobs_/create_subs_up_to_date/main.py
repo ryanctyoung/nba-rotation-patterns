@@ -58,21 +58,24 @@ def create_subs_up_to_date(
                         (pbp.pointsTotal != 0) | (pbp.actionType == 'Substitution'), [ 'gameId','clock', 'period', 'teamId',
                                                                                       'personId', 'playerName',
                                                                                       'scoreHome', 'scoreAway',
-                                                                                      'actionType', 'location']]
-                    score_history.scoreHome = pd.to_numeric(score_history.scoreHome).ffill().astype(np.int64)
-                    score_history.scoreAway = pd.to_numeric(score_history.scoreAway).ffill().astype(np.int64)
+                                                                                      'actionType', 'location']].rename({ 'gameId':'GAME_ID', 'clock':'CLOCK', 'period':'PERIOD', 'teamId':'TEAM_ID',
+                                                                                      'personId':'PERSON_ID', 'playerName':'PLAYER_NAME',
+                                                                                      'scoreHome':'SCORE_HOME', 'scoreAway':'SCORE_AWAY',
+                                                                                      'actionType':'ACTION_TYPE', 'location':'LOCATION'}, axis=1 )
+                    score_history.SCORE_HOME = pd.to_numeric(score_history.SCORE_HOME).ffill().fillna(0).astype(int)
+                    score_history.SCORE_AWAY = pd.to_numeric(score_history.SCORE_AWAY).ffill().fillna(0).astype(int)
                     sub_score_history = score_history.loc[pbp.actionType == 'Substitution']
 
                     def time_conversion(a):
-                        p = a.period
-                        time_dict = re.findall(r'\d+', a.clock)
+                        p = a.PERIOD
+                        time_dict = re.findall(r'\d+', a.CLOCK)
                         game_time = 60 * (12 - int(time_dict[0])) + (60 - int(time_dict[1])) + ((p - 1) * 720)
                         return game_time
 
                     game_time = sub_score_history.apply(
                         time_conversion, axis=1)
-                    sub_score_history.loc[:, 'gameTime'] = game_time
-                    game_score_sub_history = sub_score_history.drop(['clock', 'period', 'actionType', ], axis=1).to_dict()
+                    sub_score_history.loc[:, 'GAME_TIME'] = game_time
+                    game_score_sub_history = sub_score_history.drop(['CLOCK', 'PERIOD', 'ACTION_TYPE', ], axis=1).to_dict()
 
                     for x in list(game_score_sub_history.keys()):
                         if x not in score_dict:
@@ -82,7 +85,7 @@ def create_subs_up_to_date(
                     game_rosters = gamerotation.GameRotation(
                         timeout=timeout,
                         game_id=game_id,
-                        league_id=0,
+                        league_id='00',
                     ).get_data_frames()
 
                     team_ids = [
@@ -118,7 +121,7 @@ def create_subs_up_to_date(
 
                 break
 
-        list(map(lambda a: process_game(a, roster_subs, game_score_histories), game_series[0:2]))
+        list(map(lambda a: process_game(a, roster_subs, game_score_histories), game_series))
 
         subs_df = pd.DataFrame(roster_subs)\
 
@@ -142,9 +145,9 @@ def create_subs_up_to_date(
         return False
 
 
-if __name__ == '__main__':
-    result = False
-    while not result:
-        result = create_subs_up_to_date(date='10/23/2023', season_id='2023-24', season_type='Regular Season')
-        if not result:
-            time.sleep(10)
+# if __name__ == '__main__':
+#     result = False
+#     while not result:
+#         result = create_subs_up_to_date(date='10/23/2023', season_id='2023-24', season_type='Regular Season')
+#         if not result:
+#             time.sleep(10)

@@ -1,5 +1,5 @@
 import pickle
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 
 def store_date():
@@ -24,3 +24,11 @@ def load_date():
     last_modified = db['last_modified']
     dbfile.close()
     return last_modified
+
+if __name__ == '__main__':
+    db = {'last_modified': datetime.strptime('10/27/2023', '%m/%d/%Y')}
+    dbfile = open('../../pickle/date_last_completed', 'wb')
+
+    # source, destination
+    pickle.dump(db, dbfile)
+    dbfile.close()
